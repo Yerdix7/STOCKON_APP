@@ -11,8 +11,16 @@ Si estás descargando este proyecto desde GitHub, asegúrate de instalar las sig
 - react-native-paper
 - react-native-vector-icons
 - react-native-safe-area-context
+- react-navigation/native
+- react-navigation/native-stack
+- react-native-screens react-native-safe-area-context react-native-gesture-handler react-native-reanimated react-native-vector-icons
 
 Puedes instalarlas con el siguiente comando:
 
 ```bash
 npx expo install react-native-paper react-native-vector-icons react-native-safe-area-context
+
+npx expo install @react-navigation/native
+npx expo install react-native-screens react-native-safe-area-context react-native-gesture-handler react-native-reanimated react-native-vector-icons
+npx expo install @react-navigation/native-stack
+npx expo install @react-navigation/drawer
