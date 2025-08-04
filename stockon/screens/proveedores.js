@@ -1,6 +1,22 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, Alert, SafeAreaView } from 'react-native';
-import { Text, List, Appbar, Button, Dialog, Portal, TextInput } from 'react-native-paper';
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Modal,
+} from 'react-native';
+import {
+  Text,
+  List,
+  Appbar,
+  Button,
+  TextInput,
+} from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function proveedores({ navigation }) {
   const [proveedores, setProveedores] = useState([
@@ -32,8 +48,21 @@ export default function proveedores({ navigation }) {
     setProveedorActual(null);
   };
 
+  const esCorreoValido = (correo) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(correo);
+  };
+
   const guardarProveedor = () => {
-    if (!form.nombre || !form.contacto) return;
+    if (!form.nombre || !form.contacto) {
+      Alert.alert('Campos incompletos', 'Por favor llena todos los campos.');
+      return;
+    }
+
+    if (!esCorreoValido(form.contacto)) {
+      Alert.alert('Correo inválido', 'Por favor ingresa un correo electrónico válido.');
+      return;
+    }
 
     if (modoEdicion) {
       setProveedores((prev) =>
@@ -61,7 +90,7 @@ export default function proveedores({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFF9C4' }}>
+    <SafeAreaView style={styles.safeArea}>
       <Appbar.Header style={{ backgroundColor: '#FFF9C4' }}>
         <Appbar.Action icon="menu" onPress={() => navigation.openDrawer()} />
         <Appbar.Content title="Proveedores" />
@@ -85,39 +114,63 @@ export default function proveedores({ navigation }) {
             />
           )}
           ListHeaderComponent={<Text style={styles.header}>Lista de proveedores</Text>}
+          contentContainerStyle={{ paddingBottom: 100 }}
         />
 
-        <Button mode="contained" onPress={abrirDialogoAgregar} style={{ marginTop: 20 }}>
-          Añadir proveedor
-        </Button>
+        <View style={styles.floatingButtonContainer}>
+          <Button mode="contained" onPress={abrirDialogoAgregar} style={styles.floatingButton}>
+            Añadir proveedor
+          </Button>
+        </View>
 
-        <Portal>
-          <Dialog visible={visible} onDismiss={cerrarDialogo}>
-            <Dialog.Title>{modoEdicion ? 'Editar proveedor' : 'Nuevo proveedor'}</Dialog.Title>
-            <Dialog.Content>
-              <TextInput
-                label="Nombre"
-                value={form.nombre}
-                onChangeText={(text) => setForm({ ...form, nombre: text })}
-              />
-              <TextInput
-                label="Contacto"
-                value={form.contacto}
-                onChangeText={(text) => setForm({ ...form, contacto: text })}
-              />
-            </Dialog.Content>
-            <Dialog.Actions>
-              <Button onPress={cerrarDialogo}>Cancelar</Button>
-              <Button onPress={guardarProveedor}>Guardar</Button>
-            </Dialog.Actions>
-          </Dialog>
-        </Portal>
+        {/* Modal personalizado con validación de correo */}
+        <Modal visible={visible} animationType="slide" transparent>
+          <View style={styles.modalBackground}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.modalContainer}
+            >
+              <ScrollView contentContainerStyle={styles.modalContent}>
+                <Text style={styles.modalTitle}>
+                  {modoEdicion ? 'Editar proveedor' : 'Nuevo proveedor'}
+                </Text>
+
+                <TextInput
+                  label="Nombre"
+                  value={form.nombre}
+                  onChangeText={(text) => setForm({ ...form, nombre: text })}
+                  style={styles.input}
+                />
+                <TextInput
+                  label="Contacto"
+                  value={form.contacto}
+                  onChangeText={(text) => setForm({ ...form, contacto: text })}
+                  style={styles.input}
+                  keyboardType="email-address"
+                />
+
+                <View style={styles.modalActions}>
+                  <Button onPress={cerrarDialogo} style={{ marginRight: 10 }}>
+                    Cancelar
+                  </Button>
+                  <Button mode="contained" onPress={guardarProveedor}>
+                    Guardar
+                  </Button>
+                </View>
+              </ScrollView>
+            </KeyboardAvoidingView>
+          </View>
+        </Modal>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFF9C4',
+  },
   container: {
     flex: 1,
     padding: 15,
@@ -127,5 +180,43 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginVertical: 10,
+  },
+  floatingButtonContainer: {
+    position: 'absolute',
+    bottom: 20,
+    alignSelf: 'center',
+  },
+  floatingButton: {
+    alignSelf: 'center',
+    borderRadius: 30,
+    paddingHorizontal: 20,
+  },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: '#000000aa',
+    justifyContent: 'center',
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    borderRadius: 10,
+    padding: 20,
+  },
+  modalContent: {
+    paddingBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  input: {
+    marginBottom: 10,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 15,
   },
 });

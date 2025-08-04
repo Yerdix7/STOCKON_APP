@@ -24,3 +24,4 @@ npx expo install @react-navigation/native
 npx expo install react-native-screens react-native-safe-area-context react-native-gesture-handler react-native-reanimated react-native-vector-icons
 npx expo install @react-navigation/native-stack
 npx expo install @react-navigation/drawer
+npx expo install @react-native-community/datetimepicker
