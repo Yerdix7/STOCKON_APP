@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -17,66 +17,110 @@ import {
   TextInput,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import api from '../api';
 
 export default function proveedores({ navigation }) {
-  const [proveedores, setProveedores] = useState([
-    { id: '1', nombre: 'Distribuidora Norte', contacto: 'distribuidora@gmail.com' },
-    { id: '2', nombre: 'Proveedora Max', contacto: 'max@hotmail.com' },
-  ]);
-
+  const [proveedores, setProveedores] = useState([]);
   const [visible, setVisible] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
   const [proveedorActual, setProveedorActual] = useState(null);
-  const [form, setForm] = useState({ nombre: '', contacto: '' });
+  const [form, setForm] = useState({
+    nombre: '',
+    correo: '',
+    numTelefono: '',
+    tipoProducto: '',
+    condicionesPago: '',
+    frecuenciaSuministro: '',
+    horarioAtencion: '',
+    pais: '',
+    ciudad: '',
+    id_empresa: 1, // <-- puedes cambiar esto después según login
+  });
+
+  const cargarProveedores = async () => {
+    try {
+      const res = await api.get(`/proveedores/empresa/${form.id_empresa}`);
+      setProveedores(res.data);
+    } catch (err) {
+      console.error('Error al obtener proveedores:', err);
+    }
+  };
+
+  useEffect(() => {
+    cargarProveedores();
+  }, []);
 
   const abrirDialogoAgregar = () => {
     setModoEdicion(false);
-    setForm({ nombre: '', contacto: '' });
+    setForm({
+      nombre: '',
+      correo: '',
+      numTelefono: '',
+      tipoProducto: '',
+      condicionesPago: '',
+      frecuenciaSuministro: '',
+      horarioAtencion: '',
+      pais: '',
+      ciudad: '',
+      id_empresa: 1,
+    });
     setVisible(true);
   };
 
-  const abrirDialogoEditar = (proveedor) => {
+  const abrirDialogoEditar = (p) => {
     setModoEdicion(true);
-    setProveedorActual(proveedor);
-    setForm({ nombre: proveedor.nombre, contacto: proveedor.contacto });
+    setProveedorActual(p);
+    setForm({
+      nombre: p.nombre,
+      correo: p.correo,
+      numTelefono: p.numTelefono,
+      tipoProducto: p.tipoProducto,
+      condicionesPago: p.condicionesPago,
+      frecuenciaSuministro: p.frecuenciaSuministro,
+      horarioAtencion: p.horarioAtencion,
+      pais: p.pais,
+      ciudad: p.ciudad,
+      id_empresa: p.id_empresa,
+    });
     setVisible(true);
   };
 
   const cerrarDialogo = () => {
     setVisible(false);
-    setForm({ nombre: '', contacto: '' });
     setProveedorActual(null);
   };
 
-  const esCorreoValido = (correo) => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(correo);
-  };
+  const esCorreoValido = (correo) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
 
-  const guardarProveedor = () => {
-    if (!form.nombre || !form.contacto) {
-      Alert.alert('Campos incompletos', 'Por favor llena todos los campos.');
+  const guardarProveedor = async () => {
+    const camposRequeridos = [
+      'nombre', 'correo', 'numTelefono', 'tipoProducto', 'condicionesPago',
+      'frecuenciaSuministro', 'horarioAtencion', 'pais', 'ciudad',
+    ];
+
+    for (let campo of camposRequeridos) {
+      if (!form[campo]) {
+        Alert.alert('Campos incompletos', `Falta: ${campo}`);
+        return;
+      }
+    }
+
+    if (!esCorreoValido(form.correo)) {
+      Alert.alert('Correo inválido', 'Ingresa un correo electrónico válido.');
       return;
     }
 
-    if (!esCorreoValido(form.contacto)) {
-      Alert.alert('Correo inválido', 'Por favor ingresa un correo electrónico válido.');
-      return;
+    try {
+      if (modoEdicion) {
+        await api.put(`/proveedores/${proveedorActual.id}`, form);
+      } else {
+        await api.post('/proveedores/', form);
+      }
+      await cargarProveedores();
+      cerrarDialogo();
+    } catch (err) {
+      console.error('Error al guardar proveedor:', err.response?.data || err.message);
     }
-
-    if (modoEdicion) {
-      setProveedores((prev) =>
-        prev.map((p) => (p.id === proveedorActual.id ? { ...p, ...form } : p))
-      );
-    } else {
-      const nuevo = {
-        id: Date.now().toString(),
-        ...form,
-      };
-      setProveedores((prev) => [...prev, nuevo]);
-    }
-
-    cerrarDialogo();
   };
 
   const eliminarProveedor = (id) => {
@@ -84,7 +128,14 @@ export default function proveedores({ navigation }) {
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Eliminar',
-        onPress: () => setProveedores((prev) => prev.filter((p) => p.id !== id)),
+        onPress: async () => {
+          try {
+            await api.delete(`/proveedores/${id}`);
+            await cargarProveedores();
+          } catch (err) {
+            console.error('Error al eliminar proveedor:', err);
+          }
+        },
       },
     ]);
   };
@@ -99,11 +150,11 @@ export default function proveedores({ navigation }) {
       <View style={styles.container}>
         <FlatList
           data={proveedores}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
             <List.Item
               title={item.nombre}
-              description={`Contacto: ${item.contacto}`}
+              description={`Correo: ${item.correo}`}
               left={() => <List.Icon icon="truck" />}
               right={() => (
                 <>
@@ -123,7 +174,6 @@ export default function proveedores({ navigation }) {
           </Button>
         </View>
 
-        {/* Modal personalizado con validación de correo */}
         <Modal visible={visible} animationType="slide" transparent>
           <View style={styles.modalBackground}>
             <KeyboardAvoidingView
@@ -135,19 +185,26 @@ export default function proveedores({ navigation }) {
                   {modoEdicion ? 'Editar proveedor' : 'Nuevo proveedor'}
                 </Text>
 
-                <TextInput
-                  label="Nombre"
-                  value={form.nombre}
-                  onChangeText={(text) => setForm({ ...form, nombre: text })}
-                  style={styles.input}
-                />
-                <TextInput
-                  label="Contacto"
-                  value={form.contacto}
-                  onChangeText={(text) => setForm({ ...form, contacto: text })}
-                  style={styles.input}
-                  keyboardType="email-address"
-                />
+                {[
+                  ['Nombre', 'nombre'],
+                  ['Correo de contacto', 'correo', 'email-address'],
+                  ['Número de teléfono', 'numTelefono', 'phone-pad'],
+                  ['Tipo de producto', 'tipoProducto'],
+                  ['Condiciones de pago', 'condicionesPago'],
+                  ['Frecuencia de suministro', 'frecuenciaSuministro'],
+                  ['Horario de atención', 'horarioAtencion'],
+                  ['País', 'pais'],
+                  ['Ciudad', 'ciudad'],
+                ].map(([label, field, keyboard]) => (
+                  <TextInput
+                    key={field}
+                    label={label}
+                    value={form[field]}
+                    onChangeText={(text) => setForm({ ...form, [field]: text })}
+                    keyboardType={keyboard || 'default'}
+                    style={styles.input}
+                  />
+                ))}
 
                 <View style={styles.modalActions}>
                   <Button onPress={cerrarDialogo} style={{ marginRight: 10 }}>

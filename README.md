@@ -25,3 +25,4 @@ npx expo install react-native-screens react-native-safe-area-context react-nativ
 npx expo install @react-navigation/native-stack
 npx expo install @react-navigation/drawer
 npx expo install @react-native-community/datetimepicker
+npm install axios

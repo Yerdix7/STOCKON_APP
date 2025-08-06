@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -17,57 +17,116 @@ import {
   TextInput,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import api from '../api';
 
 export default function personal({ navigation }) {
-  const [empleados, setEmpleados] = useState([
-    { id: '1', nombre: 'Juan Pérez', puesto: 'Almacén' },
-    { id: '2', nombre: 'María García', puesto: 'Ventas' },
-    { id: '3', nombre: 'Carlos López', puesto: 'Reparto' },
-  ]);
-
+  const [empleados, setEmpleados] = useState([]);
   const [visible, setVisible] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
   const [empleadoActual, setEmpleadoActual] = useState(null);
-  const [form, setForm] = useState({ nombre: '', puesto: '' });
+  const [form, setForm] = useState({
+    nombre: '',
+    apellido: '',
+    correo: '',
+    telefono: '',
+    horario: '',
+    genero: '',
+    area: '',
+    salario: '',
+    contrasena: '',
+    id_empresa: 1,
+    id_puesto: 1,
+  });
+
+  const cargarEmpleados = async () => {
+    try {
+      const res = await api.get('/empleados/');
+      setEmpleados(res.data);
+    } catch (err) {
+      console.error('Error al cargar empleados:', err);
+    }
+  };
+
+  useEffect(() => {
+    cargarEmpleados();
+  }, []);
 
   const abrirDialogoAgregar = () => {
     setModoEdicion(false);
-    setForm({ nombre: '', puesto: '' });
+    setForm({
+      nombre: '',
+      apellido: '',
+      correo: '',
+      telefono: '',
+      horario: '',
+      genero: '',
+      area: '',
+      salario: '',
+      contrasena: '',
+      id_empresa: 1,
+      id_puesto: 1,
+    });
     setVisible(true);
   };
 
   const abrirDialogoEditar = (empleado) => {
     setModoEdicion(true);
     setEmpleadoActual(empleado);
-    setForm({ nombre: empleado.nombre, puesto: empleado.puesto });
+    setForm({
+      nombre: empleado.nombre,
+      apellido: empleado.apellido,
+      correo: empleado.correo,
+      telefono: empleado.telefono,
+      horario: empleado.horario,
+      genero: empleado.genero,
+      area: empleado.area,
+      salario: empleado.salario.toString(),
+      contrasena: empleado.contrasena,
+      id_empresa: empleado.id_empresa,
+      id_puesto: empleado.id_puesto,
+    });
     setVisible(true);
   };
 
   const cerrarDialogo = () => {
     setVisible(false);
-    setForm({ nombre: '', puesto: '' });
     setEmpleadoActual(null);
   };
 
-  const guardarEmpleado = () => {
-    if (!form.nombre || !form.puesto) {
-      Alert.alert('Campos incompletos', 'Por favor llena todos los campos.');
+  const esCorreoValido = (correo) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
+
+  const guardarEmpleado = async () => {
+    const camposObligatorios = [
+      'nombre', 'apellido', 'correo', 'telefono',
+      'horario', 'genero', 'area', 'salario', 'contrasena',
+    ];
+
+    for (let campo of camposObligatorios) {
+      if (!form[campo]) {
+        Alert.alert('Campos incompletos', `Falta: ${campo}`);
+        return;
+      }
+    }
+
+    if (!esCorreoValido(form.correo)) {
+      Alert.alert('Correo inválido', 'Ingresa un correo válido.');
       return;
     }
 
-    if (modoEdicion) {
-      setEmpleados((prev) =>
-        prev.map((e) => (e.id === empleadoActual.id ? { ...e, ...form } : e))
-      );
-    } else {
-      const nuevo = {
-        id: Date.now().toString(),
-        ...form,
-      };
-      setEmpleados((prev) => [...prev, nuevo]);
-    }
+    try {
+      const payload = { ...form, salario: parseFloat(form.salario) };
 
-    cerrarDialogo();
+      if (modoEdicion) {
+        await api.put(`/empleados/${empleadoActual.id}`, payload);
+      } else {
+        await api.post('/empleados/', payload);
+      }
+
+      await cargarEmpleados();
+      cerrarDialogo();
+    } catch (err) {
+      console.error('Error al guardar empleado:', err.response?.data || err.message);
+    }
   };
 
   const eliminarEmpleado = (id) => {
@@ -75,7 +134,14 @@ export default function personal({ navigation }) {
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Eliminar',
-        onPress: () => setEmpleados((prev) => prev.filter((e) => e.id !== id)),
+        onPress: async () => {
+          try {
+            await api.delete(`/empleados/${id}`);
+            await cargarEmpleados();
+          } catch (err) {
+            console.error('Error al eliminar empleado:', err);
+          }
+        },
       },
     ]);
   };
@@ -94,29 +160,21 @@ export default function personal({ navigation }) {
         <View style={styles.container}>
           <FlatList
             data={empleados}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
               <List.Item
-                title={item.nombre}
-                description={`Puesto: ${item.puesto}`}
+                title={`${item.nombre} ${item.apellido}`}
+                description={`Área: ${item.area} | Correo: ${item.correo}`}
                 left={() => <List.Icon icon="account" />}
                 right={() => (
                   <>
-                    <Appbar.Action
-                      icon="pencil"
-                      onPress={() => abrirDialogoEditar(item)}
-                    />
-                    <Appbar.Action
-                      icon="delete"
-                      onPress={() => eliminarEmpleado(item.id)}
-                    />
+                    <Appbar.Action icon="pencil" onPress={() => abrirDialogoEditar(item)} />
+                    <Appbar.Action icon="delete" onPress={() => eliminarEmpleado(item.id)} />
                   </>
                 )}
               />
             )}
-            ListHeaderComponent={
-              <Text style={styles.header}>Lista de empleados</Text>
-            }
+            ListHeaderComponent={<Text style={styles.header}>Lista de empleados</Text>}
             contentContainerStyle={{ paddingBottom: 100 }}
           />
         </View>
@@ -131,7 +189,6 @@ export default function personal({ navigation }) {
           </Button>
         </View>
 
-        {/* Modal personalizado para evitar conflictos con teclado */}
         <Modal visible={visible} animationType="slide" transparent>
           <View style={styles.modalBackground}>
             <KeyboardAvoidingView
@@ -143,18 +200,27 @@ export default function personal({ navigation }) {
                   {modoEdicion ? 'Editar empleado' : 'Nuevo empleado'}
                 </Text>
 
-                <TextInput
-                  label="Nombre"
-                  value={form.nombre}
-                  onChangeText={(text) => setForm({ ...form, nombre: text })}
-                  style={styles.input}
-                />
-                <TextInput
-                  label="Puesto"
-                  value={form.puesto}
-                  onChangeText={(text) => setForm({ ...form, puesto: text })}
-                  style={styles.input}
-                />
+                {[
+                  ['Nombre', 'nombre'],
+                  ['Apellido', 'apellido'],
+                  ['Correo', 'correo', 'email-address'],
+                  ['Teléfono', 'telefono', 'phone-pad'],
+                  ['Horario', 'horario'],
+                  ['Género', 'genero'],
+                  ['Área', 'area'],
+                  ['Salario', 'salario', 'decimal-pad'],
+                  ['Contraseña', 'contrasena'],
+                ].map(([label, field, keyboard]) => (
+                  <TextInput
+                    key={field}
+                    label={label}
+                    value={form[field]}
+                    onChangeText={(text) => setForm({ ...form, [field]: text })}
+                    keyboardType={keyboard || 'default'}
+                    style={styles.input}
+                    secureTextEntry={field === 'contrasena'}
+                  />
+                ))}
 
                 <View style={styles.modalActions}>
                   <Button onPress={cerrarDialogo} style={{ marginRight: 10 }}>
